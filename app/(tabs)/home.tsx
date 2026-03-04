@@ -265,7 +265,7 @@ export default function HomeScreen() {
           <View className="items-center justify-center py-12">
             <Ionicons name="search-outline" size={48} color="#71717a" />
             <AppText className="text-zinc-500 text-lg mt-4">
-              No tasks found for "{searchQuery}"
+              No tasks found for &quot;{searchQuery}&quot;
             </AppText>
           </View>
         ) : gridView ? (
@@ -359,17 +359,38 @@ export default function HomeScreen() {
 
             {!aiResponse && (
               <Animated.View className="flex-1 mb-4">
-                {AI_TASK_OPTIONS.map((option) => (
-                  <TouchableOpacity
-                    key={option.key}
-                    className="flex-row items-center mb-4"
-                    onPress={() => setAITask(option.key)}
-                  >
-                    <AppText className="text-white text-sm font-bold ml-2 bg-zinc-800 px-4 py-2 rounded-full">
-                      {`${option.title}`}
-                    </AppText>
-                  </TouchableOpacity>
-                ))}
+                {AI_TASK_OPTIONS.map((option) => {
+                  const isSelected = aiTask === option.key;
+                  return (
+                    <TouchableOpacity
+                      key={option.key}
+                      className="flex-row items-center mb-4"
+                      onPress={() => setAITask(option.key)}
+                    >
+                      <View
+                        className={`flex-row items-center px-4 py-2 rounded-full ${isSelected
+                            ? "bg-lime-400/15 border border-lime-400/50"
+                            : "bg-zinc-800"
+                          }`}
+                      >
+                        {isSelected && (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={16}
+                            color="#a3e635"
+                            style={{ marginRight: 6 }}
+                          />
+                        )}
+                        <AppText
+                          className={`text-sm font-bold ${isSelected ? "text-lime-400" : "text-white"
+                            }`}
+                        >
+                          {option.title}
+                        </AppText>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </Animated.View>
             )}
 

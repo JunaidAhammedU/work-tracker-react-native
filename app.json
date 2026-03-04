@@ -9,18 +9,14 @@
     "scheme": "work-tracker",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash-design.png",
+      "image": "./assets/images/app-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "com.worktracker.task",
-      "buildNumber": "1",
       "supportsTablet": true,
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "bundleIdentifier": "com.worktracker.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -30,7 +26,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.worktracker.app"
     },
     "web": {
       "output": "static",
@@ -41,7 +38,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-design.png",
+          "image": "./assets/images/app-logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#000000",
@@ -51,7 +48,9 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-font"
+      "expo-font",
+      "./plugins/withSharedGroupPreferences",
+      "./plugins/withWorkTrackerWidget"
     ],
     "experiments": {
       "typedRoutes": true,

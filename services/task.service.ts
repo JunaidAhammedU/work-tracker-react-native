@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { widgetService } from "./widget.service";
 
 export interface Task {
   id: string;
@@ -13,6 +14,23 @@ export interface Task {
 }
 
 const STORAGE_KEY = "tasks";
+
+/**
+ * Syncs today's tasks to the iOS widget via shared App Group UserDefaults.
+ */
+async function syncWidgetData(tasks: Task[]) {
+  const today = new Date().toISOString().split("T")[0];
+  const todaysTasks = tasks.filter(
+    (t) => t.createdAt.split("T")[0] === today
+  );
+  const widgetTasks = todaysTasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    priority: t.priority,
+    status: t.status,
+  }));
+  await widgetService.syncTasksToWidget(widgetTasks);
+}
 
 export const taskService = {
   // Fetch all tasks.
@@ -39,6 +57,7 @@ export const taskService = {
 
     const updatedTasks = [newTask, ...tasks];
     await storage.set(STORAGE_KEY, updatedTasks);
+    await syncWidgetData(updatedTasks);
     return newTask;
   },
 
@@ -52,6 +71,7 @@ export const taskService = {
 
     tasks[taskIndex] = updatedTask;
     await storage.set(STORAGE_KEY, tasks);
+    await syncWidgetData(tasks);
   },
 
   // Delete a task by ID.
@@ -59,6 +79,7 @@ export const taskService = {
     const tasks = await this.getTasks();
     const updatedTasks = tasks.filter((t) => t.id !== id);
     await storage.set(STORAGE_KEY, updatedTasks);
+    await syncWidgetData(updatedTasks);
   },
 
   // Get todays tasks.

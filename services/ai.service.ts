@@ -1,12 +1,18 @@
+import { DEFAULT_GEMINI_MODEL } from "@/constants/gemini.models";
 import {
   EOD_WORK_SUMMARY_PROMPT,
   TASK_FORMAT_PROMPT,
 } from "@/constants/task.ai.prompt";
+import { modelStorage } from "@/services/storage";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+
+async function getModel() {
+  const selectedModelId = await modelStorage.getSelectedModel();
+  return genAI.getGenerativeModel({ model: selectedModelId || DEFAULT_GEMINI_MODEL });
+}
 
 interface Task {
   id: string;
@@ -33,6 +39,8 @@ export const aiService = {
       ${userTask}
       Return JSON only.
       `;
+
+      const model = await getModel();
 
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
@@ -77,6 +85,8 @@ export const aiService = {
       Return JSON only.
       `;
 
+      const model = await getModel();
+
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
           const result = await model.generateContent(finalPrompt);
@@ -95,7 +105,7 @@ export const aiService = {
           );
         }
       }
-    } catch (error) {
+    } catch {
       alert("AI Service is currently unavailable. Please try again later.");
       throw new Error("Failed to fetch response from AI service.");
     }
