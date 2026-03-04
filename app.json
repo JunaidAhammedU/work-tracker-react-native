@@ -1,5 +1,6 @@
 {
   "expo": {
+    "owner": "gokula",
     "name": "Work Tracker",
     "slug": "work-tracker",
     "version": "1.0.0",
@@ -14,7 +15,12 @@
     },
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.worktracker.task",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -54,7 +60,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "398dd4b0-ef27-4b77-a547-ef36982cc986"
+        "projectId": "8359bdce-1948-481d-8df4-77707f4c46f1"
       }
     }
   }
