@@ -13,7 +13,7 @@ struct WidgetTask: Codable, Identifiable {
 // MARK: - Timeline Provider
 
 struct TaskProvider: TimelineProvider {
-    let appGroup = "group.com.worktracker.shared"
+    let appGroup = "group.com.worktracker.task"
 
     func placeholder(in context: Context) -> TaskEntry {
         TaskEntry(date: Date(), tasks: [

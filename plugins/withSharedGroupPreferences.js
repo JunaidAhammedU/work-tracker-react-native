@@ -2,12 +2,11 @@ const {
     withXcodeProject,
     withEntitlementsPlist,
     createRunOncePlugin,
-    IOSConfig,
 } = require("@expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
 
-const APP_GROUP = "group.com.worktracker.shared";
+const APP_GROUP = "group.com.worktracker.task";
 
 /**
  * Adds App Group entitlement to the main app target.
@@ -44,7 +43,6 @@ const withNativeFiles = (config) => {
                 fs.copyFileSync(src, dest);
 
                 // Add to Xcode project if not already there
-                const existingFile = xcodeProject.getFirstProject();
                 if (file.endsWith(".swift") || file.endsWith(".m")) {
                     // Check if file already in project
                     const buildFiles = xcodeProject.pbxBuildFileSection();

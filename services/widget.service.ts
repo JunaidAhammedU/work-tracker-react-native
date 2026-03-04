@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from "react-native";
 
-const APP_GROUP = "group.com.worktracker.shared";
+const APP_GROUP = "group.com.worktracker.task";
 
 interface WidgetTask {
     id: string;

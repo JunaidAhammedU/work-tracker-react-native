@@ -3,7 +3,7 @@
     "owner": "gokula",
     "name": "Work Tracker",
     "slug": "work-tracker",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-logo.png",
     "scheme": "work-tracker",
@@ -16,7 +16,15 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.worktracker.app"
+      "bundleIdentifier": "com.worktracker.task",
+      "appleTeamId": "V9G53UFKD3",
+      "buildNumber": "2",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.worktracker.task"]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +35,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.worktracker.app"
+      "package": "com.worktracker.task"
     },
     "web": {
       "output": "static",
@@ -50,7 +58,8 @@
       "@react-native-community/datetimepicker",
       "expo-font",
       "./plugins/withSharedGroupPreferences",
-      "./plugins/withWorkTrackerWidget"
+      "./plugins/withWorkTrackerWidget",
+      "./plugins/withDevelopmentTeam"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -59,7 +68,22 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "8359bdce-1948-481d-8df4-77707f4c46f1"
+        "projectId": "8359bdce-1948-481d-8df4-77707f4c46f1",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "WorkTrackerWidget",
+                  "bundleIdentifier": "com.worktracker.task.WorkTrackerWidget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": ["group.com.worktracker.task"]
+                  }
+                }
+              ]
+            }
+          }
+        }
       }
     }
   }
