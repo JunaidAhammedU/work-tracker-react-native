@@ -1,3 +1,4 @@
+import ActiveTaskTimer from "@/components/ActiveTaskTimer";
 import AppText from "@/components/AppText";
 import HomeGridLayout from "@/components/layout/HomeGridLayout";
 import ListLayout from "@/components/layout/ListLayout";
@@ -7,6 +8,7 @@ import {
 } from "@/constants/ai.task.options";
 import { aiService } from "@/services/ai.service";
 import { taskService } from "@/services/task.service";
+import { ActiveTimer, timerService } from "@/services/timer.service";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -39,6 +41,7 @@ export default function HomeScreen() {
   const [aiWaitingTimeResponse, setAiWaitingTimeResponse] = useState(
     AT_RESPONSE_WAITING_MESSAGES[0],
   );
+  const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const router = useRouter();
 
   // UI layout changes based on gridView state
@@ -65,6 +68,8 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchTasks();
+      // Reload timer state when we return to the home screen
+      timerService.get().then(setActiveTimer);
     }, [fetchTasks]),
   );
 
@@ -74,29 +79,67 @@ export default function HomeScreen() {
     let airesponse;
     try {
       const response = await taskService.getTodaysTasks();
-      if (response.length > 0) {
-        switch (key) {
-          case "eod":
-            airesponse = await aiService.generateEodSummary(response);
-            break;
-          case "summery":
-            // airesponse = await aiService.generateTaskSummary(response);
-            break;
-          case "email":
-            // airesponse = await aiService.generateEmailSummary(response);
-            break;
-          default:
-            break;
-        }
+      if (response.length === 0) {
+        Alert.alert("No Tasks", "You have no tasks for today to generate a report from.");
+        return;
       }
+
+      switch (key) {
+        case "eod":
+          airesponse = await aiService.generateEodSummary(response);
+          break;
+        case "summery":
+          // airesponse = await aiService.generateTaskSummary(response);
+          break;
+        case "email":
+          // airesponse = await aiService.generateEmailSummary(response);
+          break;
+        default:
+          break;
+      }
+
       if (airesponse) {
         setAIResponse(airesponse);
       }
-    } catch (error) {
+    } catch (error: any) {
+      Alert.alert("AI Error", error.message || "Failed to generate AI response");
       console.error("Error creating task:", error);
     } finally {
       setIsGeneratingAI(false);
     }
+  };
+
+  // Start a work timer for a task
+  const handleStartWork = async (task: any) => {
+    if (activeTimer) {
+      Alert.alert(
+        "Timer Already Running",
+        `"${activeTimer.taskTitle}" is already in progress. Stop it first before starting a new one.`,
+      );
+      return;
+    }
+    const estimatedMinutes = task.estimatedTime
+      ? Math.round(parseFloat(task.estimatedTime) * 60)
+      : 0;
+    const timer: ActiveTimer = {
+      taskId: task.id,
+      taskTitle: task.title,
+      estimatedMinutes,
+      startedAt: new Date().toISOString(),
+      pausedAt: null,
+      totalPausedSeconds: 0,
+    };
+    await timerService.start(timer);
+    setActiveTimer(timer);
+  };
+
+  const handleStopTimer = () => {
+    setActiveTimer(null);
+  };
+
+  const handleBreak = async () => {
+    const updated = await timerService.pause();
+    if (updated) setActiveTimer({ ...updated });
   };
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -251,6 +294,11 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Active Timer Card */}
+        {activeTimer && (
+          <ActiveTaskTimer timer={activeTimer} onStop={handleStopTimer} />
+        )}
+
         {/* To Do Section */}
         <View className="flex-row justify-between items-center mb-4">
           <View className="bg-orange-500/10 px-3 py-1 rounded-lg">
@@ -269,9 +317,9 @@ export default function HomeScreen() {
             </AppText>
           </View>
         ) : gridView ? (
-          <HomeGridLayout updates={filteredTasks} />
+          <HomeGridLayout updates={filteredTasks} onStartWork={handleStartWork} onBreak={handleBreak} />
         ) : (
-          <ListLayout updates={filteredTasks} />
+          <ListLayout updates={filteredTasks} onStartWork={handleStartWork} onBreak={handleBreak} />
         )}
 
         {/* Next Card Preview */}
@@ -369,8 +417,8 @@ export default function HomeScreen() {
                     >
                       <View
                         className={`flex-row items-center px-4 py-2 rounded-full ${isSelected
-                            ? "bg-lime-400/15 border border-lime-400/50"
-                            : "bg-zinc-800"
+                          ? "bg-lime-400/15 border border-lime-400/50"
+                          : "bg-zinc-800"
                           }`}
                       >
                         {isSelected && (

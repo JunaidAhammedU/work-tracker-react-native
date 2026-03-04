@@ -31,7 +31,9 @@ struct TaskProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<TaskEntry>) -> Void) {
         let tasks = loadTasks()
         let entry = TaskEntry(date: Date(), tasks: tasks)
-        // Refresh every 15 minutes
+        // Refresh every 15 minutes as a fallback; instant refresh is triggered
+        // by the JS side bumping "widgetLastUpdate" in shared UserDefaults which
+        // the app calls WidgetCenter.reloadAllTimelines() after every mutation.
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
@@ -46,7 +48,7 @@ struct TaskProvider: TimelineProvider {
 
         do {
             let tasks = try JSONDecoder().decode([WidgetTask].self, from: data)
-            return Array(tasks.prefix(5)) // Limit to 5 tasks for widget
+            return Array(tasks.prefix(5))
         } catch {
             return []
         }

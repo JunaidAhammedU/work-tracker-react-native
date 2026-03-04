@@ -1,6 +1,21 @@
 import { storage } from "./storage";
 import { widgetService } from "./widget.service";
 
+// convert any legacy values stored by earlier versions of the app
+// so that all code can assume the new standardized status strings.
+function normalizeStatus(status: string): string {
+  switch (status) {
+    case "todo":
+      return "Pending";
+    case "inprogress":
+      return "In Progress";
+    case "done":
+      return "Completed";
+    default:
+      return status;
+  }
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -35,8 +50,24 @@ async function syncWidgetData(tasks: Task[]) {
 export const taskService = {
   // Fetch all tasks.
   async getTasks(): Promise<Task[]> {
-    const tasks = await storage.get<Task[]>(STORAGE_KEY);
-    return tasks || [];
+    const tasks = (await storage.get<Task[]>(STORAGE_KEY)) || [];
+
+    // normalize any legacy status values that may have been stored before
+    // we aligned all status strings.  This keeps the database consistent
+    // and prevents the dropdown from rendering empty values.
+    const normalized = tasks.map((t) => ({
+      ...t,
+      status: normalizeStatus(t.status),
+    }));
+
+    // if anything changed, write back to storage so the fix is permanent
+    const changed = JSON.stringify(normalized) !== JSON.stringify(tasks);
+    if (changed) {
+      await storage.set(STORAGE_KEY, normalized);
+      await syncWidgetData(normalized);
+    }
+
+    return normalized;
   },
 
   // Fetch a single task by ID.

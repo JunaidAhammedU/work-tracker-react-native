@@ -1,7 +1,9 @@
+import ActiveTaskTimer from "@/components/ActiveTaskTimer";
 import AppText from "@/components/AppText";
 import { getPriorityColor, getStatusColor } from "@/components/Helper";
 import { formatHumanDateTime } from "@/services/date.helper";
 import { taskService } from "@/services/task.service";
+import { ActiveTimer, timerService } from "@/services/timer.service";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -36,6 +38,7 @@ export default function ViewSpecific() {
   );
   const [loading, setLoading] = React.useState(true);
   const [isCopied, setIsCopied] = React.useState(false);
+  const [activeTimer, setActiveTimer] = React.useState<ActiveTimer | null>(null);
   const router = useRouter();
 
   const fetchTaskDetails = React.useCallback(async () => {
@@ -51,8 +54,42 @@ export default function ViewSpecific() {
   useFocusEffect(
     useCallback(() => {
       fetchTaskDetails();
+      timerService.get().then((t) => {
+        // Only show the timer if it belongs to this task
+        setActiveTimer(t?.taskId === taskId ? t : null);
+      });
     }, [fetchTaskDetails]),
   );
+
+  const handleStartWork = async () => {
+    const existing = await timerService.get();
+    if (existing && existing.taskId !== taskId) {
+      Alert.alert(
+        "Timer Already Running",
+        `"${existing.taskTitle}" is already in progress. Stop it first before starting a new one.`,
+      );
+      return;
+    }
+    if (!taskDetails) return;
+    const estimatedMinutes = taskDetails.estimatedTime
+      ? Math.round(parseFloat(taskDetails.estimatedTime) * 60)
+      : 0;
+    const timer: ActiveTimer = {
+      taskId: taskDetails.id,
+      taskTitle: taskDetails.title,
+      estimatedMinutes,
+      startedAt: new Date().toISOString(),
+      pausedAt: null,
+      totalPausedSeconds: 0,
+    };
+    await timerService.start(timer);
+    setActiveTimer(timer);
+  };
+
+  const handleBreak = async () => {
+    const updated = await timerService.pause();
+    if (updated) setActiveTimer({ ...updated });
+  };
 
   if (loading) {
     return (
@@ -176,9 +213,23 @@ export default function ViewSpecific() {
               >
                 <Ionicons name="pencil" size={20} color="white" />
               </TouchableOpacity>
-              <TouchableOpacity className="w-11 h-11 bg-lime-400 rounded-xl justify-center items-center">
-                <Ionicons name="checkmark-done" size={20} color="black" />
-              </TouchableOpacity>
+              {activeTimer ? (
+                <TouchableOpacity
+                  className="h-11 px-4 bg-lime-400/10 rounded-xl justify-center items-center border border-lime-400/40 flex-row gap-2"
+                  onPress={handleBreak}
+                >
+                  <Ionicons name="pause-circle-outline" size={18} color="#a3e635" />
+                  <AppText className="text-lime-400 text-sm font-semibold">Break</AppText>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  className="h-11 px-4 bg-lime-400 rounded-xl justify-center items-center flex-row gap-2"
+                  onPress={handleStartWork}
+                >
+                  <Ionicons name="play" size={18} color="black" />
+                  <AppText className="text-black text-sm font-bold">Start</AppText>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -215,6 +266,16 @@ export default function ViewSpecific() {
             </AppText>
           </View>
         </View>
+
+        {/* Active Timer Card for this task */}
+        {activeTimer && (
+          <View className="mx-5 mb-4">
+            <ActiveTaskTimer
+              timer={activeTimer}
+              onStop={() => setActiveTimer(null)}
+            />
+          </View>
+        )}
 
         {/* Description Card */}
         <View className="mx-5 mb-4">
