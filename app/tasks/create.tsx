@@ -1,5 +1,7 @@
 import AppText from "@/components/AppText";
+import { GEMINI_MODELS, type GeminiModel } from "@/constants/gemini.models";
 import { aiService } from "@/services/ai.service";
+import { modelStorage } from "@/services/storage";
 import { taskService } from "@/services/task.service";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -40,7 +42,19 @@ export default function CreateTaskScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showAIPrompt, setShowAIPrompt] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<GeminiModel>(GEMINI_MODELS[0]);
+  const [showModelPicker, setShowModelPicker] = useState(false);
   const glowOpacity = useSharedValue(0.3);
+
+  // Load the saved model on mount
+  useEffect(() => {
+    const loadModel = async () => {
+      const savedModelId = await modelStorage.getSelectedModel();
+      const found = GEMINI_MODELS.find((m) => m.id === savedModelId);
+      if (found) setSelectedModel(found);
+    };
+    loadModel();
+  }, []);
 
   useEffect(() => {
     if (showAIPrompt) {
@@ -118,20 +132,21 @@ export default function CreateTaskScreen() {
     try {
       const aiResponse = await aiService.sendMessage(userTask);
       if (!aiResponse) throw new Error("No response from AI service");
+
       const taskData = JSON.parse(aiResponse);
       if (taskData) {
-        setTitle(taskData.title);
-        setDescription(taskData.description);
-        setPriority(taskData.priority);
-        setStatus(taskData.status);
-        setEstimatedTime(taskData.estimatedTime);
-        setTags(taskData.tags);
+        setTitle(taskData.title || "");
+        setDescription(taskData.description || "");
+        setPriority(taskData.priority || "P2");
+        setStatus(taskData.status || "Pending");
+        setEstimatedTime(taskData.estimatedTime || "");
+        setTags(taskData.tags || []);
         setDate(taskData.dueDate ? new Date(taskData.dueDate) : null);
         setShowAIPrompt(false);
       }
-    } catch (error) {
-      Alert.alert("Error", "Failed to create task");
-      console.error(error);
+    } catch (error: any) {
+      Alert.alert("AI Error", error.message || "Failed to generate task with AI");
+      console.error("AI task creation error:", error);
     } finally {
       setIsGeneratingAI(false);
     }
@@ -187,16 +202,14 @@ export default function CreateTaskScreen() {
                   <TouchableOpacity
                     key={p}
                     onPress={() => setPriority(p)}
-                    className={`flex-1 py-3 rounded-xl border items-center ${
-                      priority === p
-                        ? "bg-zinc-700 border-zinc-600"
-                        : "bg-zinc-900 border-zinc-800"
-                    }`}
+                    className={`flex-1 py-3 rounded-xl border items-center ${priority === p
+                      ? "bg-zinc-700 border-zinc-600"
+                      : "bg-zinc-900 border-zinc-800"
+                      }`}
                   >
                     <AppText
-                      className={`font-semibold ${
-                        priority === p ? "text-white" : "text-zinc-400"
-                      }`}
+                      className={`font-semibold ${priority === p ? "text-white" : "text-zinc-400"
+                        }`}
                     >
                       {p}
                     </AppText>
@@ -215,16 +228,14 @@ export default function CreateTaskScreen() {
                   <TouchableOpacity
                     key={s}
                     onPress={() => setStatus(s)}
-                    className={`flex-1 py-3 rounded-xl border items-center ${
-                      status === s
-                        ? "bg-zinc-700 border-zinc-600"
-                        : "bg-zinc-900 border-zinc-800"
-                    }`}
+                    className={`flex-1 py-3 rounded-xl border items-center ${status === s
+                      ? "bg-zinc-700 border-zinc-600"
+                      : "bg-zinc-900 border-zinc-800"
+                      }`}
                   >
                     <AppText
-                      className={`font-semibold text-xs ${
-                        status === s ? "text-white" : "text-zinc-400"
-                      }`}
+                      className={`font-semibold text-xs ${status === s ? "text-white" : "text-zinc-400"
+                        }`}
                     >
                       {s}
                     </AppText>
@@ -432,6 +443,61 @@ export default function CreateTaskScreen() {
               <AppText className="text-zinc-400 mb-4">
                 Describe your task and let AI fill in the details...
               </AppText>
+
+              {/* Model Selector */}
+              <TouchableOpacity
+                onPress={() => setShowModelPicker(!showModelPicker)}
+                className="flex-row items-center justify-between bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 mb-3"
+              >
+                <View className="flex-row items-center flex-1">
+                  <Ionicons name="hardware-chip-outline" size={18} color="#a3e635" />
+                  <AppText className="text-zinc-300 text-sm ml-2" numberOfLines={1}>
+                    {selectedModel.label}
+                  </AppText>
+                </View>
+                <Ionicons
+                  name={showModelPicker ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color="#71717a"
+                />
+              </TouchableOpacity>
+
+              {showModelPicker && (
+                <ScrollView
+                  className="max-h-32 bg-zinc-950 border border-zinc-700 rounded-xl mb-3"
+                  nestedScrollEnabled
+                >
+                  {GEMINI_MODELS.filter((m) => m.isFree).map((model) => (
+                    <TouchableOpacity
+                      key={model.id}
+                      onPress={async () => {
+                        setSelectedModel(model);
+                        await modelStorage.setSelectedModel(model.id);
+                        setShowModelPicker(false);
+                      }}
+                      className={`flex-row items-center px-4 py-3 border-b border-zinc-800 ${selectedModel.id === model.id ? "bg-zinc-800" : ""
+                        }`}
+                    >
+                      <View className="flex-1">
+                        <AppText
+                          className={`text-sm font-medium ${selectedModel.id === model.id
+                              ? "text-lime-400"
+                              : "text-zinc-300"
+                            }`}
+                        >
+                          {model.label}
+                        </AppText>
+                        <AppText className="text-zinc-500 text-xs mt-0.5">
+                          {model.description}
+                        </AppText>
+                      </View>
+                      {selectedModel.id === model.id && (
+                        <Ionicons name="checkmark-circle" size={18} color="#a3e635" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
 
               <Animated.View
                 style={[{ borderWidth: 2, borderRadius: 16 }, glowStyle]}

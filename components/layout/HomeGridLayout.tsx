@@ -20,23 +20,39 @@ interface Update {
 }
 
 interface HomeGridLayoutProps {
-    updates: Update[]
+    updates: Update[];
+    onStartWork?: (task: Update) => void;
+    onBreak?: (task: Update) => void;
 }
 
-export default function HomeGridLayout({ updates }: HomeGridLayoutProps) {
+export default function HomeGridLayout({ updates, onStartWork, onBreak }: HomeGridLayoutProps) {
     const router = useRouter();
 
+    // local copy of the updates prop so we can optimistically modify it
+    // without relying on parent re-renders.  This also allows us to
+    // display the new status immediately after a change and ensures the
+    // FlatList notices the difference (it only watches the data prop
+    // reference).
+    const [localUpdates, setLocalUpdates] = useState<Update[]>(updates);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+    // keep local copy in sync if the parent passes new data
+    React.useEffect(() => {
+        setLocalUpdates(updates);
+    }, [updates]);
 
     const handleStatusChange = async (task: Update, newStatus: string) => {
         setUpdatingId(task.id);
         try {
             const updatedTask = { ...task, status: newStatus };
             await taskService.updateTask(updatedTask);
-            // Optionally, you can refetch or optimistically update UI here
-            task.status = newStatus;
+
+            // update the local copy so the component re-renders
+            setLocalUpdates((prev) =>
+                prev.map((u) => (u.id === task.id ? { ...u, status: newStatus } : u)),
+            );
         } catch (e) {
-            // handle error (show toast, etc)
+            // could surface an error message/toast here
         } finally {
             setUpdatingId(null);
         }
@@ -45,7 +61,7 @@ export default function HomeGridLayout({ updates }: HomeGridLayoutProps) {
     return (
         <View className="mb-10">
             <FlatList
-                data={updates}
+                data={localUpdates}
                 keyExtractor={(item, index) => item.id || index.toString()}
                 numColumns={2}
                 scrollEnabled={false}
@@ -67,6 +83,8 @@ export default function HomeGridLayout({ updates }: HomeGridLayoutProps) {
                                     <TaskStatusDropdown
                                         value={item.status}
                                         onChange={(status) => handleStatusChange(item, status)}
+                                        onStartWork={() => onStartWork?.(item)}
+                                        onBreak={() => onBreak?.(item)}
                                     />
                                 </View>
                             </View>

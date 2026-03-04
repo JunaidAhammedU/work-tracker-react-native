@@ -60,5 +60,5 @@ export const GEMINI_MODELS: GeminiModel[] = [
     },
 ];
 
-export const DEFAULT_GEMINI_MODEL = "gemini-1.5-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
 export const GEMINI_MODEL_STORAGE_KEY = "@selected_gemini_model";

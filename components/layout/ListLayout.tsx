@@ -1,8 +1,10 @@
 import { formatHumanDateTime } from "@/services/date.helper";
+import { taskService } from "@/services/task.service";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { View } from "react-native";
 import AppText from "../AppText";
+import TaskStatusDropdown from "../task-status-dropdown";
 
 interface Update {
   id: string;
@@ -18,12 +20,35 @@ interface Update {
 
 interface ListLayoutProps {
   updates: Update[];
+  onStartWork?: (task: Update) => void;
+  onBreak?: (task: Update) => void;
 }
 
-export default function ListLayout({ updates }: ListLayoutProps) {
+export default function ListLayout({ updates, onStartWork, onBreak }: ListLayoutProps) {
+  // keep a local copy so we can update status inline and force
+  // component re-render without depending on parent to refresh the
+  // array reference
+  const [localUpdates, setLocalUpdates] = React.useState<Update[]>(updates);
+
+  React.useEffect(() => {
+    setLocalUpdates(updates);
+  }, [updates]);
+
+  const handleStatusChange = async (task: Update, newStatus: string) => {
+    try {
+      const updatedTask = { ...task, status: newStatus };
+      await taskService.updateTask(updatedTask);
+      setLocalUpdates((prev) =>
+        prev.map((u) => (u.id === task.id ? { ...u, status: newStatus } : u)),
+      );
+    } catch (e) {
+      console.error('Failed to update status', e);
+    }
+  };
+
   return (
     <View className="gap-3 mb-10">
-      {updates.map((update, idx) => (
+      {localUpdates.map((update, idx) => (
         <View
           key={update.id || idx}
           className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 flex-row items-center justify-between"
@@ -41,6 +66,13 @@ export default function ListLayout({ updates }: ListLayoutProps) {
                   {update.priority}
                 </AppText>
               </View>
+              {/* inline status dropdown */}
+              <TaskStatusDropdown
+                value={update.status}
+                onChange={(s) => handleStatusChange(update, s)}
+                onStartWork={() => onStartWork?.(update)}
+                onBreak={() => onBreak?.(update)}
+              />
             </View>
 
             <AppText className="text-lime-400 text-sm mb-2" numberOfLines={1}>
