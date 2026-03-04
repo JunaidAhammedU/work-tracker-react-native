@@ -1,11 +1,15 @@
 import AppText from "@/components/AppText";
+import { GEMINI_MODELS, GeminiModel } from "@/constants/gemini.models";
+import { modelStorage } from "@/services/storage";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
+  FlatList,
   Image,
+  Modal,
   ScrollView,
   TouchableOpacity,
   View,
@@ -15,6 +19,20 @@ const { width } = Dimensions.get("window");
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [modelPickerVisible, setModelPickerVisible] = useState(false);
+
+  useEffect(() => {
+    modelStorage.getSelectedModel().then(setSelectedModel);
+  }, []);
+
+  const handleSelectModel = useCallback(async (model: GeminiModel) => {
+    await modelStorage.setSelectedModel(model.id);
+    setSelectedModel(model.id);
+    setModelPickerVisible(false);
+  }, []);
+
+  const currentModel = GEMINI_MODELS.find((m) => m.id === selectedModel);
 
   const userStats = [
     { label: "Projects", value: "12" },
@@ -86,7 +104,114 @@ export default function ProfileScreen() {
             </AppText>
           </View>
         </View>
+
+        {/* AI Model Selector */}
+        <View className="mx-4 mb-6">
+          <View className="flex-row items-center mb-3 gap-2">
+            <Ionicons name="sparkles-outline" size={18} color="#FF8C00" />
+            <AppText className="text-white text-base font-semibold">
+              AI Model
+            </AppText>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setModelPickerVisible(true)}
+            className="bg-white/5 border border-white/10 rounded-2xl p-4 flex-row items-center justify-between"
+            activeOpacity={0.7}
+          >
+            <View className="flex-1 mr-3">
+              <AppText className="text-white font-semibold text-sm">
+                {currentModel?.label ?? "Select a model"}
+              </AppText>
+              <AppText className="text-gray-400 text-xs mt-0.5" numberOfLines={1}>
+                {currentModel?.description ?? "Tap to choose a Gemini model"}
+              </AppText>
+            </View>
+            <View className="flex-row items-center gap-2">
+              <View className="bg-orange-500/20 px-2 py-0.5 rounded-full">
+                <AppText className="text-orange-400 text-xs font-medium">Free</AppText>
+              </View>
+              <Ionicons name="chevron-down" size={16} color="#9ca3af" />
+            </View>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      {/* Model Picker Modal */}
+      <Modal
+        visible={modelPickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModelPickerVisible(false)}
+      >
+        <TouchableOpacity
+          className="flex-1 bg-black/60"
+          activeOpacity={1}
+          onPress={() => setModelPickerVisible(false)}
+        />
+        <View
+          className="bg-[#111111] rounded-t-3xl border-t border-white/10"
+          style={{ maxHeight: "70%" }}
+        >
+          {/* Modal Header */}
+          <View className="flex-row items-center justify-between px-5 pt-5 pb-3 border-b border-white/10">
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="sparkles" size={18} color="#FF8C00" />
+              <AppText className="text-white font-bold text-lg">
+                Select Gemini Model
+              </AppText>
+            </View>
+            <TouchableOpacity
+              onPress={() => setModelPickerVisible(false)}
+              className="h-8 w-8 bg-white/10 rounded-full items-center justify-center"
+            >
+              <Ionicons name="close" size={16} color="white" />
+            </TouchableOpacity>
+          </View>
+
+          <AppText className="text-gray-500 text-xs px-5 pt-3 pb-1">
+            All models are free tier. Switch models if you hit a rate limit.
+          </AppText>
+
+          <FlatList
+            data={GEMINI_MODELS}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, paddingBottom: 32 }}
+            ItemSeparatorComponent={() => <View className="h-2" />}
+            renderItem={({ item }) => {
+              const isSelected = item.id === selectedModel;
+              return (
+                <TouchableOpacity
+                  onPress={() => handleSelectModel(item)}
+                  activeOpacity={0.7}
+                  className={`rounded-2xl p-4 flex-row items-center justify-between border ${isSelected
+                      ? "bg-orange-500/15 border-orange-500/50"
+                      : "bg-white/5 border-white/10"
+                    }`}
+                >
+                  <View className="flex-1 mr-3">
+                    <AppText
+                      className={`font-semibold text-sm ${isSelected ? "text-orange-400" : "text-white"
+                        }`}
+                    >
+                      {item.label}
+                    </AppText>
+                    <AppText className="text-gray-400 text-xs mt-0.5" numberOfLines={2}>
+                      {item.description}
+                    </AppText>
+                  </View>
+                  {isSelected && (
+                    <View className="h-6 w-6 bg-orange-500 rounded-full items-center justify-center">
+                      <Ionicons name="checkmark" size={14} color="white" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      </Modal>
     </View>
   );
 }
+
