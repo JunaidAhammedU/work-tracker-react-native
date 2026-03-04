@@ -1,9 +1,11 @@
 import { formatHumanDateTime } from '@/services/date.helper';
+import { taskService } from '@/services/task.service';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { FlatList, Pressable, TouchableOpacity, View } from 'react-native';
 import AppText from '../AppText';
+import TaskStatusDropdown from '../task-status-dropdown';
 
 interface Update {
     id: string;
@@ -24,6 +26,22 @@ interface HomeGridLayoutProps {
 export default function HomeGridLayout({ updates }: HomeGridLayoutProps) {
     const router = useRouter();
 
+    const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+    const handleStatusChange = async (task: Update, newStatus: string) => {
+        setUpdatingId(task.id);
+        try {
+            const updatedTask = { ...task, status: newStatus };
+            await taskService.updateTask(updatedTask);
+            // Optionally, you can refetch or optimistically update UI here
+            task.status = newStatus;
+        } catch (e) {
+            // handle error (show toast, etc)
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
     return (
         <View className="mb-10">
             <FlatList
@@ -42,8 +60,14 @@ export default function HomeGridLayout({ updates }: HomeGridLayoutProps) {
                                         {item.title}
                                     </AppText>
                                 </View>
-                                <View className='bg-red-500/10 px-2 py-1 rounded text-center'>
-                                    <AppText className='text-red-500 text-[10px] font-bold uppercase'>{item.priority}</AppText>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <View className='bg-red-500/10 px-2 py-1 rounded text-center'>
+                                        <AppText className='text-red-500 text-[10px] font-bold uppercase'>{item.priority}</AppText>
+                                    </View>
+                                    <TaskStatusDropdown
+                                        value={item.status}
+                                        onChange={(status) => handleStatusChange(item, status)}
+                                    />
                                 </View>
                             </View>
 
