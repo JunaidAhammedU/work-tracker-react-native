@@ -2,6 +2,29 @@ import ActivityKit
 import Foundation
 import React
 
+// MARK: - TaskTimerAttributes
+// Defined inline in this file so it is ALWAYS compiled as part of the main app
+// target. The identical struct also exists in the Live Activity extension target
+// (ios-live-activity/TaskTimerAttributes.swift). Both must stay in sync.
+//
+// We duplicate rather than share because each Xcode target has its own
+// compilation scope and the Expo config plugin's addSourceFile() is unreliable
+// for cross-target file registration.
+
+@available(iOS 16.1, *)
+struct TaskTimerAttributes: ActivityAttributes {
+    struct ContentState: Codable, Hashable {
+        var startedAt: String
+        var estimatedSeconds: Int
+        var totalPausedSeconds: Int
+        var pausedAt: String
+        var statusLabel: String
+    }
+
+    var taskId: String
+    var taskTitle: String
+}
+
 // MARK: - LiveActivityBridge
 // Exposes start / update / stop Live Activity methods to React Native.
 // Called from widget.service.ts via NativeModules.LiveActivityBridge.

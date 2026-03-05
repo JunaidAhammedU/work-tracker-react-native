@@ -79,24 +79,17 @@ const withLiveActivityExtension = (config) => {
         const infoDest = path.join(destDir, `${LA_TARGET_NAME}-Info.plist`);
         if (fs.existsSync(infoSrc)) fs.copyFileSync(infoSrc, infoDest);
 
-        // ── b) Copy LiveActivityBridge + TaskTimerAttributes into main app ───────
-        // LiveActivityBridge.swift references TaskTimerAttributes (Activity<TaskTimerAttributes>).
-        // Since each Xcode target has its own compilation scope, TaskTimerAttributes.swift
-        // MUST be compiled in BOTH the extension target AND the main app target.
+        // ── b) Copy LiveActivityBridge files into main app ─────────────────────
+        // LiveActivityBridge.swift now contains TaskTimerAttributes inline, so
+        // we only need to copy the bridge files — no separate attributes file.
         const mainAppDir = path.join(platformProjectRoot, projectName);
         const bridgeFiles = ["LiveActivityBridge.swift", "LiveActivityBridge.m"];
-        const mainAppExtraFiles = [...bridgeFiles, "TaskTimerAttributes.swift"];
 
         for (const file of bridgeFiles) {
             const src = path.join(projectRoot, "ios-native", file);
             const dest = path.join(mainAppDir, file);
             if (fs.existsSync(src)) fs.copyFileSync(src, dest);
         }
-
-        // Copy TaskTimerAttributes.swift into the main app directory
-        const attrSrc = path.join(srcDir, "TaskTimerAttributes.swift");
-        const attrDest = path.join(mainAppDir, "TaskTimerAttributes.swift");
-        if (fs.existsSync(attrSrc)) fs.copyFileSync(attrSrc, attrDest);
 
         // ── c) Skip if target was already added in a previous prebuild run ────
         if (xcodeProject.pbxTargetByName(LA_TARGET_NAME)) {
@@ -143,16 +136,14 @@ const withLiveActivityExtension = (config) => {
             xcodeProject.addSourceFile(file, { target: target.uuid }, laGroup.uuid);
         }
 
-        // ── h) Add bridge files + TaskTimerAttributes to the MAIN app target ────
-        // We must explicitly pass the main app target UUID to addSourceFile so
-        // the files are compiled in the main app's Sources build phase — not
-        // accidentally in the extension's phase.
+        // ── h) Add bridge files to the MAIN app target ──────────────────────────
+        // TaskTimerAttributes is defined inline in LiveActivityBridge.swift so
+        // we only need to register the two bridge files with the main app target.
         const mainAppTarget = xcodeProject.getFirstTarget().firstTarget;
         const mainAppTargetUuid = mainAppTarget.uuid;
 
-        for (const file of mainAppExtraFiles) {
+        for (const file of bridgeFiles) {
             const filePath = `${projectName}/${file}`;
-            // Check if the file reference already exists in the build file section
             const buildFiles = xcodeProject.pbxBuildFileSection();
             const alreadyAdded = Object.values(buildFiles).some(
                 (bf) => bf && typeof bf === "object" &&
