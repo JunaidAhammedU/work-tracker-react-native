@@ -7,7 +7,7 @@ import Foundation
 // (main app target) so both targets can reference the same type without
 // cross-target compilation dependencies. KEEP BOTH IN SYNC.
 
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 struct TaskTimerAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var startedAt: String

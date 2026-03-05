@@ -115,7 +115,7 @@ const withLiveActivityExtension = (config) => {
                         bc.buildSettings.SWIFT_VERSION = "5.0";
                         bc.buildSettings.DEVELOPMENT_TEAM = teamId;
                         bc.buildSettings.TARGETED_DEVICE_FAMILY = '"1,2"';
-                        bc.buildSettings.IPHONEOS_DEPLOYMENT_TARGET = "16.1";
+                        bc.buildSettings.IPHONEOS_DEPLOYMENT_TARGET = "16.2";
                         bc.buildSettings.SKIP_INSTALL = "YES";
                         bc.buildSettings.CODE_SIGN_ENTITLEMENTS =
                             `${LA_TARGET_NAME}/WorkTrackerLiveActivity.entitlements`;

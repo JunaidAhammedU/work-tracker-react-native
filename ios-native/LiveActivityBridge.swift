@@ -11,7 +11,7 @@ import React
 // compilation scope and the Expo config plugin's addSourceFile() is unreliable
 // for cross-target file registration.
 
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 struct TaskTimerAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var startedAt: String
@@ -29,7 +29,7 @@ struct TaskTimerAttributes: ActivityAttributes {
 // Exposes start / update / stop Live Activity methods to React Native.
 // Called from widget.service.ts via NativeModules.LiveActivityBridge.
 //
-// The class itself must NOT be @available(iOS 16.1, *) because RN's ObjC bridge
+// The class itself must NOT be @available(iOS 16.2, *) because RN's ObjC bridge
 // resolves it at load time on all OS versions. Instead each method gates the
 // ActivityKit calls behind #available checks.
 
@@ -38,7 +38,7 @@ class LiveActivityBridge: NSObject {
 
     // ─── Shared helper ──────────────────────────────────────────────────────
 
-    @available(iOS 16.1, *)
+    @available(iOS 16.2, *)
     private func buildState(from dict: NSDictionary) -> TaskTimerAttributes.ContentState {
         return TaskTimerAttributes.ContentState(
             startedAt:           dict["startedAt"]           as? String ?? "",
@@ -59,12 +59,12 @@ class LiveActivityBridge: NSObject {
         resolver: @escaping RCTPromiseResolveBlock,
         rejecter: @escaping RCTPromiseRejectBlock
     ) {
-        guard #available(iOS 16.1, *) else {
-            rejecter("UNAVAILABLE", "Live Activities require iOS 16.1+", nil)
+        guard #available(iOS 16.2, *) else {
+            rejecter("UNAVAILABLE", "Live Activities require iOS 16.2+", nil)
             return
         }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            rejecter("UNAVAILABLE", "Live Activities are disabled on this device.", nil)
+            rejecter("DISABLED", "Live Activities are disabled on this device.", nil)
             return
         }
 
@@ -98,7 +98,7 @@ class LiveActivityBridge: NSObject {
         resolver: @escaping RCTPromiseResolveBlock,
         rejecter: @escaping RCTPromiseRejectBlock
     ) {
-        guard #available(iOS 16.1, *) else {
+        guard #available(iOS 16.2, *) else {
             resolver(false)
             return
         }
@@ -123,7 +123,7 @@ class LiveActivityBridge: NSObject {
         resolver: @escaping RCTPromiseResolveBlock,
         rejecter: @escaping RCTPromiseRejectBlock
     ) {
-        guard #available(iOS 16.1, *) else {
+        guard #available(iOS 16.2, *) else {
             resolver(true)
             return
         }
