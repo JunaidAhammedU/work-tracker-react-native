@@ -42,18 +42,23 @@ const withNativeFiles = (config) => {
             if (fs.existsSync(src)) {
                 fs.copyFileSync(src, dest);
 
-                // Add to Xcode project if not already there
+                // Add to Xcode project under the MAIN app target if not already there
                 if (file.endsWith(".swift") || file.endsWith(".m")) {
-                    // Check if file already in project
                     const buildFiles = xcodeProject.pbxBuildFileSection();
+                    const filePath = `${projectName}/${file}`;
                     const alreadyAdded = Object.values(buildFiles).some(
-                        (bf) => bf && bf.fileRef_comment === file
+                        (bf) => bf && typeof bf === "object" &&
+                            (bf.fileRef_comment === file || bf.fileRef_comment === filePath)
                     );
                     if (!alreadyAdded) {
+                        // Explicitly target the main app so files don't
+                        // accidentally land in an extension target's build phase.
+                        const mainAppTarget = xcodeProject.getFirstTarget().firstTarget;
+                        const mainGroup = xcodeProject.getFirstProject().firstProject.mainGroup;
                         xcodeProject.addSourceFile(
-                            `${projectName}/${file}`,
-                            null,
-                            xcodeProject.getFirstProject().firstProject.mainGroup
+                            filePath,
+                            { target: mainAppTarget.uuid },
+                            mainGroup
                         );
                     }
                 }

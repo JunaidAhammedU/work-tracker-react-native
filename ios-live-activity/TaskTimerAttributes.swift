@@ -3,7 +3,11 @@ import Foundation
 
 // MARK: - Shared Live Activity contract
 // Both the main app (via the native bridge) and the extension read this type.
+// The @available gate is required because ActivityAttributes is iOS 16.1+.
+// In the main app target LiveActivityBridge guards every call site with
+// #available(iOS 16.1, *) so this struct is never instantiated on older OS.
 
+@available(iOS 16.1, *)
 public struct TaskTimerAttributes: ActivityAttributes {
     // Static data — set once when the activity starts, never changes.
     public struct ContentState: Codable, Hashable {

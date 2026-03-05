@@ -89,7 +89,12 @@
                 },
                 {
                   "targetName": "WorkTrackerLiveActivity",
-                  "bundleIdentifier": "com.worktracker.task.WorkTrackerLiveActivity"
+                  "bundleIdentifier": "com.worktracker.task.WorkTrackerLiveActivity",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.worktracker.task"
+                    ]
+                  }
                 }
               ]
             }

@@ -81,18 +81,19 @@ const withLiveActivityExtension = (config) => {
 
         // ── b) Copy LiveActivityBridge + TaskTimerAttributes into main app ───────
         // LiveActivityBridge.swift references TaskTimerAttributes (Activity<TaskTimerAttributes>).
-        // Since TaskTimerAttributes is defined in the extension target, it is not
-        // visible to the main app. We must also compile TaskTimerAttributes.swift
-        // into the main app target so the type is in scope.
+        // Since each Xcode target has its own compilation scope, TaskTimerAttributes.swift
+        // MUST be compiled in BOTH the extension target AND the main app target.
         const mainAppDir = path.join(platformProjectRoot, projectName);
         const bridgeFiles = ["LiveActivityBridge.swift", "LiveActivityBridge.m"];
+        const mainAppExtraFiles = [...bridgeFiles, "TaskTimerAttributes.swift"];
+
         for (const file of bridgeFiles) {
             const src = path.join(projectRoot, "ios-native", file);
             const dest = path.join(mainAppDir, file);
             if (fs.existsSync(src)) fs.copyFileSync(src, dest);
         }
 
-        // Also copy TaskTimerAttributes.swift into the main app directory
+        // Copy TaskTimerAttributes.swift into the main app directory
         const attrSrc = path.join(srcDir, "TaskTimerAttributes.swift");
         const attrDest = path.join(mainAppDir, "TaskTimerAttributes.swift");
         if (fs.existsSync(attrSrc)) fs.copyFileSync(attrSrc, attrDest);
@@ -143,17 +144,25 @@ const withLiveActivityExtension = (config) => {
         }
 
         // ── h) Add bridge files + TaskTimerAttributes to the MAIN app target ────
-        const mainAppFiles = [...bridgeFiles, "TaskTimerAttributes.swift"];
-        for (const file of mainAppFiles) {
+        // We must explicitly pass the main app target UUID to addSourceFile so
+        // the files are compiled in the main app's Sources build phase — not
+        // accidentally in the extension's phase.
+        const mainAppTarget = xcodeProject.getFirstTarget().firstTarget;
+        const mainAppTargetUuid = mainAppTarget.uuid;
+
+        for (const file of mainAppExtraFiles) {
+            const filePath = `${projectName}/${file}`;
+            // Check if the file reference already exists in the build file section
             const buildFiles = xcodeProject.pbxBuildFileSection();
             const alreadyAdded = Object.values(buildFiles).some(
-                (bf) => bf && bf.fileRef_comment === file
+                (bf) => bf && typeof bf === "object" &&
+                    (bf.fileRef_comment === file || bf.fileRef_comment === filePath)
             );
             if (!alreadyAdded) {
                 xcodeProject.addSourceFile(
-                    `${projectName}/${file}`,
-                    null,
-                    xcodeProject.getFirstProject().firstProject.mainGroup
+                    filePath,
+                    { target: mainAppTargetUuid },
+                    mainGroup
                 );
             }
         }
