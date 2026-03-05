@@ -79,7 +79,11 @@ const withLiveActivityExtension = (config) => {
         const infoDest = path.join(destDir, `${LA_TARGET_NAME}-Info.plist`);
         if (fs.existsSync(infoSrc)) fs.copyFileSync(infoSrc, infoDest);
 
-        // ── b) Copy LiveActivityBridge native files into main app ─────────────
+        // ── b) Copy LiveActivityBridge + TaskTimerAttributes into main app ───────
+        // LiveActivityBridge.swift references TaskTimerAttributes (Activity<TaskTimerAttributes>).
+        // Since TaskTimerAttributes is defined in the extension target, it is not
+        // visible to the main app. We must also compile TaskTimerAttributes.swift
+        // into the main app target so the type is in scope.
         const mainAppDir = path.join(platformProjectRoot, projectName);
         const bridgeFiles = ["LiveActivityBridge.swift", "LiveActivityBridge.m"];
         for (const file of bridgeFiles) {
@@ -87,6 +91,11 @@ const withLiveActivityExtension = (config) => {
             const dest = path.join(mainAppDir, file);
             if (fs.existsSync(src)) fs.copyFileSync(src, dest);
         }
+
+        // Also copy TaskTimerAttributes.swift into the main app directory
+        const attrSrc = path.join(srcDir, "TaskTimerAttributes.swift");
+        const attrDest = path.join(mainAppDir, "TaskTimerAttributes.swift");
+        if (fs.existsSync(attrSrc)) fs.copyFileSync(attrSrc, attrDest);
 
         // ── c) Skip if target was already added in a previous prebuild run ────
         if (xcodeProject.pbxTargetByName(LA_TARGET_NAME)) {
@@ -133,8 +142,9 @@ const withLiveActivityExtension = (config) => {
             xcodeProject.addSourceFile(file, { target: target.uuid }, laGroup.uuid);
         }
 
-        // ── h) Add bridge files to the MAIN app target ─────────────────────────
-        for (const file of bridgeFiles) {
+        // ── h) Add bridge files + TaskTimerAttributes to the MAIN app target ────
+        const mainAppFiles = [...bridgeFiles, "TaskTimerAttributes.swift"];
+        for (const file of mainAppFiles) {
             const buildFiles = xcodeProject.pbxBuildFileSection();
             const alreadyAdded = Object.values(buildFiles).some(
                 (bf) => bf && bf.fileRef_comment === file
