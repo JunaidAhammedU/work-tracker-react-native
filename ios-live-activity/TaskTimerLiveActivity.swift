@@ -48,7 +48,7 @@ private func progressFraction(_ state: TaskTimerAttributes.ContentState) -> Doub
 
 // MARK: - Live Activity Widget
 
-@available(iOSApplicationExtension 16.1, *)
+@available(iOSApplicationExtension 16.2, *)
 struct TaskTimerLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: TaskTimerAttributes.self) { context in
@@ -149,7 +149,7 @@ struct TaskTimerLiveActivity: Widget {
 
 // MARK: - Lock Screen View
 
-@available(iOSApplicationExtension 16.1, *)
+@available(iOSApplicationExtension 16.2, *)
 struct LockScreenView: View {
     let attributes: TaskTimerAttributes
     let state: TaskTimerAttributes.ContentState

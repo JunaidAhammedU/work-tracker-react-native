@@ -79,23 +79,17 @@ const withLiveActivityExtension = (config) => {
         const infoDest = path.join(destDir, `${LA_TARGET_NAME}-Info.plist`);
         if (fs.existsSync(infoSrc)) fs.copyFileSync(infoSrc, infoDest);
 
-        // ── b) Copy LiveActivityBridge + TaskTimerAttributes into main app ───────
-        // LiveActivityBridge.swift references TaskTimerAttributes (Activity<TaskTimerAttributes>).
-        // Since TaskTimerAttributes is defined in the extension target, it is not
-        // visible to the main app. We must also compile TaskTimerAttributes.swift
-        // into the main app target so the type is in scope.
+        // ── b) Copy LiveActivityBridge files into main app ─────────────────────
+        // LiveActivityBridge.swift now contains TaskTimerAttributes inline, so
+        // we only need to copy the bridge files — no separate attributes file.
         const mainAppDir = path.join(platformProjectRoot, projectName);
         const bridgeFiles = ["LiveActivityBridge.swift", "LiveActivityBridge.m"];
+
         for (const file of bridgeFiles) {
             const src = path.join(projectRoot, "ios-native", file);
             const dest = path.join(mainAppDir, file);
             if (fs.existsSync(src)) fs.copyFileSync(src, dest);
         }
-
-        // Also copy TaskTimerAttributes.swift into the main app directory
-        const attrSrc = path.join(srcDir, "TaskTimerAttributes.swift");
-        const attrDest = path.join(mainAppDir, "TaskTimerAttributes.swift");
-        if (fs.existsSync(attrSrc)) fs.copyFileSync(attrSrc, attrDest);
 
         // ── c) Skip if target was already added in a previous prebuild run ────
         if (xcodeProject.pbxTargetByName(LA_TARGET_NAME)) {
@@ -121,7 +115,7 @@ const withLiveActivityExtension = (config) => {
                         bc.buildSettings.SWIFT_VERSION = "5.0";
                         bc.buildSettings.DEVELOPMENT_TEAM = teamId;
                         bc.buildSettings.TARGETED_DEVICE_FAMILY = '"1,2"';
-                        bc.buildSettings.IPHONEOS_DEPLOYMENT_TARGET = "16.1";
+                        bc.buildSettings.IPHONEOS_DEPLOYMENT_TARGET = "16.2";
                         bc.buildSettings.SKIP_INSTALL = "YES";
                         bc.buildSettings.CODE_SIGN_ENTITLEMENTS =
                             `${LA_TARGET_NAME}/WorkTrackerLiveActivity.entitlements`;
@@ -142,18 +136,24 @@ const withLiveActivityExtension = (config) => {
             xcodeProject.addSourceFile(file, { target: target.uuid }, laGroup.uuid);
         }
 
-        // ── h) Add bridge files + TaskTimerAttributes to the MAIN app target ────
-        const mainAppFiles = [...bridgeFiles, "TaskTimerAttributes.swift"];
-        for (const file of mainAppFiles) {
+        // ── h) Add bridge files to the MAIN app target ──────────────────────────
+        // TaskTimerAttributes is defined inline in LiveActivityBridge.swift so
+        // we only need to register the two bridge files with the main app target.
+        const mainAppTarget = xcodeProject.getFirstTarget().firstTarget;
+        const mainAppTargetUuid = mainAppTarget.uuid;
+
+        for (const file of bridgeFiles) {
+            const filePath = `${projectName}/${file}`;
             const buildFiles = xcodeProject.pbxBuildFileSection();
             const alreadyAdded = Object.values(buildFiles).some(
-                (bf) => bf && bf.fileRef_comment === file
+                (bf) => bf && typeof bf === "object" &&
+                    (bf.fileRef_comment === file || bf.fileRef_comment === filePath)
             );
             if (!alreadyAdded) {
                 xcodeProject.addSourceFile(
-                    `${projectName}/${file}`,
-                    null,
-                    xcodeProject.getFirstProject().firstProject.mainGroup
+                    filePath,
+                    { target: mainAppTargetUuid },
+                    mainGroup
                 );
             }
         }

@@ -2,16 +2,43 @@ import ActivityKit
 import Foundation
 import React
 
+// MARK: - TaskTimerAttributes
+// Defined inline in this file so it is ALWAYS compiled as part of the main app
+// target. The identical struct also exists in the Live Activity extension target
+// (ios-live-activity/TaskTimerAttributes.swift). Both must stay in sync.
+//
+// We duplicate rather than share because each Xcode target has its own
+// compilation scope and the Expo config plugin's addSourceFile() is unreliable
+// for cross-target file registration.
+
+@available(iOS 16.2, *)
+struct TaskTimerAttributes: ActivityAttributes {
+    struct ContentState: Codable, Hashable {
+        var startedAt: String
+        var estimatedSeconds: Int
+        var totalPausedSeconds: Int
+        var pausedAt: String
+        var statusLabel: String
+    }
+
+    var taskId: String
+    var taskTitle: String
+}
+
 // MARK: - LiveActivityBridge
 // Exposes start / update / stop Live Activity methods to React Native.
 // Called from widget.service.ts via NativeModules.LiveActivityBridge.
+//
+// The class itself must NOT be @available(iOS 16.2, *) because RN's ObjC bridge
+// resolves it at load time on all OS versions. Instead each method gates the
+// ActivityKit calls behind #available checks.
 
-@available(iOS 16.1, *)
 @objc(LiveActivityBridge)
 class LiveActivityBridge: NSObject {
 
     // ─── Shared helper ──────────────────────────────────────────────────────
 
+    @available(iOS 16.2, *)
     private func buildState(from dict: NSDictionary) -> TaskTimerAttributes.ContentState {
         return TaskTimerAttributes.ContentState(
             startedAt:           dict["startedAt"]           as? String ?? "",
@@ -23,8 +50,6 @@ class LiveActivityBridge: NSObject {
     }
 
     // ─── start ──────────────────────────────────────────────────────────────
-    // Launches a new Live Activity for the given task.
-    // If one with the same taskId already exists it is ended first.
 
     @objc
     func start(
@@ -34,8 +59,12 @@ class LiveActivityBridge: NSObject {
         resolver: @escaping RCTPromiseResolveBlock,
         rejecter: @escaping RCTPromiseRejectBlock
     ) {
+        guard #available(iOS 16.2, *) else {
+            rejecter("UNAVAILABLE", "Live Activities require iOS 16.2+", nil)
+            return
+        }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            rejecter("UNAVAILABLE", "Live Activities are disabled on this device.", nil)
+            rejecter("DISABLED", "Live Activities are disabled on this device.", nil)
             return
         }
 
@@ -61,7 +90,6 @@ class LiveActivityBridge: NSObject {
     }
 
     // ─── update ─────────────────────────────────────────────────────────────
-    // Updates an existing Live Activity (e.g. on break / resume / tick).
 
     @objc
     func update(
@@ -70,6 +98,10 @@ class LiveActivityBridge: NSObject {
         resolver: @escaping RCTPromiseResolveBlock,
         rejecter: @escaping RCTPromiseRejectBlock
     ) {
+        guard #available(iOS 16.2, *) else {
+            resolver(false)
+            return
+        }
         let state = buildState(from: stateDict)
         var found = false
 
@@ -80,17 +112,10 @@ class LiveActivityBridge: NSObject {
                 await activity.update(.init(state: state, staleDate: nil))
             }
         }
-
-        if found {
-            resolver(true)
-        } else {
-            // Not a hard error — the activity may have been dismissed by the OS.
-            resolver(false)
-        }
+        resolver(found)
     }
 
     // ─── stop ───────────────────────────────────────────────────────────────
-    // Ends the Live Activity immediately and removes it from the Lock Screen.
 
     @objc
     func stop(
@@ -98,6 +123,10 @@ class LiveActivityBridge: NSObject {
         resolver: @escaping RCTPromiseResolveBlock,
         rejecter: @escaping RCTPromiseRejectBlock
     ) {
+        guard #available(iOS 16.2, *) else {
+            resolver(true)
+            return
+        }
         for activity in Activity<TaskTimerAttributes>.activities
         where activity.attributes.taskId == taskId {
             Task { await activity.end(nil, dismissalPolicy: .immediate) }
